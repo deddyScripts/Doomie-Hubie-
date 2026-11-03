@@ -107,6 +107,14 @@ local function addXp(amount)
 end
 
 local function isRakoofHPZero()
+    local rakoofVal = rep:FindFirstChild("RakoofHP", true) 
+        or ws:FindFirstChild("RakoofHP", true) 
+        or (lp:FindFirstChild("stats") and lp.stats:FindFirstChild("RakoofHP"))
+        or (lp:FindFirstChild("leaderstats") and lp.leaderstats:FindFirstChild("RakoofHP"))
+        
+    if rakoofVal and (rakoofVal:IsA("NumberValue") or rakoofVal:IsA("IntValue")) then
+        return rakoofVal.Value <= 0
+    end
     return true
 end
 
@@ -319,9 +327,6 @@ local mainPage = createTab("Main", "💀")
 local autoPage = createTab("Auto", "⚡")
 local dropsPage = createTab("Drops", "🎁")
 local playerPage = createTab("Player", "🚀")
-local combatPage = createTab("Combat", "⚔️")
-local teleportsPage = createTab("Teleport", "🌌")
-local visualPage = createTab("Visuals", "👁️")
 
 local adminPage = nil
 if isSpecialUser then
@@ -332,193 +337,141 @@ buttons["Main"].BackgroundColor3 = Color3.fromRGB(180, 30, 30)
 buttons["Main"].TextColor3 = Color3.fromRGB(255, 255, 255)
 pages["Main"].Visible = true
 
-local function addToggle(parent, text, cb)
+local function addLevelGatedToggle(parent, text, requiredLevel, cb)
     local state = false
     local b = Instance.new("TextButton", parent)
     b.Size = UDim2.new(1, 0, 0, 36); b.ZIndex = 13
     Instance.new("UICorner", b).CornerRadius = UDim.new(0, 8)
     local ts2 = Instance.new("UIStroke", b)
-    ts2.Color = Color3.fromRGB(255, 80, 0)
 
     local function updateVisuals()
-        b.Text = text .. (state and ": ON" or ": OFF")
-        b.TextColor3 = Color3.fromRGB(255, 230, 200)
-        b.BackgroundColor3 = state and Color3.fromRGB(180, 30, 30) or Color3.fromRGB(40, 22, 24)
+        local effectiveLevel = isSpecialUser and 250 or levelData.level
+        if effectiveLevel >= requiredLevel then
+            b.Text = text .. (state and ": ON" or ": OFF")
+            b.TextColor3 = Color3.fromRGB(255, 230, 200)
+            b.BackgroundColor3 = state and Color3.fromRGB(180, 30, 30) or Color3.fromRGB(40, 22, 24)
+            ts2.Color = Color3.fromRGB(255, 80, 0)
+        else
+            b.Text = text .. " [🔒 LVL " .. requiredLevel .. "]"
+            b.TextColor3 = Color3.fromRGB(150, 150, 150)
+            b.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+            ts2.Color = Color3.fromRGB(80, 80, 80)
+        end
     end
 
     b.Activated:Connect(function()
-        state = not state
-        updateVisuals()
-        cb(state)
+        local effectiveLevel = isSpecialUser and 250 or levelData.level
+        if effectiveLevel >= requiredLevel then
+            state = not state
+            updateVisuals()
+            cb(state)
+        else
+            b.Text = "❌ LEVEL " .. requiredLevel .. " REQUIRED!"
+            task.delay(1, updateVisuals)
+        end
     end)
 
-    updateVisuals()
+    task.spawn(function()
+        while true do
+            updateVisuals()
+            task.wait(1)
+        end
+    end)
+
     return b
 end
 
-local function addButton(parent, text, cb)
+local function addLevelGatedButton(parent, text, requiredLevel, cb)
     local b = Instance.new("TextButton", parent)
     b.Size = UDim2.new(1, 0, 0, 38); b.ZIndex = 13
     Instance.new("UICorner", b).CornerRadius = UDim.new(0, 8)
     local bs = Instance.new("UIStroke", b)
-    bs.Color = Color3.fromRGB(255, 100, 0)
-    b.Text = text
-    b.TextColor3 = Color3.fromRGB(255, 255, 255)
-    b.BackgroundColor3 = Color3.fromRGB(160, 25, 25)
+
+    local function updateVisuals()
+        local effectiveLevel = isSpecialUser and 250 or levelData.level
+        if effectiveLevel >= requiredLevel then
+            b.Text = text
+            b.TextColor3 = Color3.fromRGB(255, 255, 255)
+            b.BackgroundColor3 = Color3.fromRGB(160, 25, 25)
+            bs.Color = Color3.fromRGB(255, 100, 0)
+        else
+            b.Text = text .. " [🔒 LVL " .. requiredLevel .. "]"
+            b.TextColor3 = Color3.fromRGB(150, 150, 150)
+            b.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+            bs.Color = Color3.fromRGB(80, 80, 80)
+        end
+    end
 
     b.Activated:Connect(function()
-        cb()
+        local effectiveLevel = isSpecialUser and 250 or levelData.level
+        if effectiveLevel >= requiredLevel then
+            cb()
+        else
+            b.Text = "❌ LEVEL " .. requiredLevel .. " REQUIRED!"
+            task.delay(1, updateVisuals)
+        end
+    end)
+
+    task.spawn(function()
+        while true do
+            updateVisuals()
+            task.wait(1)
+        end
     end)
 
     return b
 end
 
 local normalFastOn = false
-addToggle(mainPage, "💀 DOOM STANDARD LOOP", function(state) normalFastOn = state end)
+addLevelGatedToggle(mainPage, "💀 DOOM STANDARD LOOP", 1, function(state) normalFastOn = state end)
 
 local ultraFastOn = false
-addToggle(mainPage, "⚡ DOOM TURBO LOOP", function(state) ultraFastOn = state end)
+addLevelGatedToggle(mainPage, "⚡ DOOM TURBO LOOP", 10, function(state) ultraFastOn = state end)
 
 local hyperGodLoopOn = false
-addToggle(mainPage, "🔥 HYPER GOD LOOP", function(state) hyperGodLoopOn = state end)
+addLevelGatedToggle(mainPage, "🔥 HYPER GOD LOOP", 150, function(state) hyperGodLoopOn = state end)
 
 local doomDayLoopOn = false
-addToggle(mainPage, "💥 DOOMSDAY HYPER GODLOOP", function(state) doomDayLoopOn = state end)
+addLevelGatedToggle(mainPage, "💥 DOOMSDAY HYPER GODLOOP", 250, function(state) doomDayLoopOn = state end)
 
 local instantApocalypseOn = false
-addToggle(mainPage, "⚡ INSTANT APOCALYPSE FARM", function(state) instantApocalypseOn = state end)
-
-local blockAuraOn = false
-addToggle(mainPage, "⛏️ UNIVERSAL BLOCK AUTO-BREAK AURA", function(state) blockAuraOn = state end)
-
-local infiniteOreMagnetOn = false
-addToggle(mainPage, "🧲 INFINITE ORE MAGNET TELEPORT", function(state) infiniteOreMagnetOn = state end)
-
-local autoRebirthOn = false
-addToggle(autoPage, "🔄 AUTO REBIRTH / ASCENSION SPAM", function(state) autoRebirthOn = state end)
-
-local autoUpgradeOn = false
-addToggle(autoPage, "📈 AUTO MAX STATS & UPGRADES", function(state) autoUpgradeOn = state end)
-
-local autoBuyPickOn = false
-addToggle(autoPage, "⛏️ AUTO BUY BEST PICKAXE / WEAPON", function(state) autoBuyPickOn = state end)
-
-local autoSellOn = false
-addToggle(autoPage, "💰 AUTO SELL ORES / INVENTORY", function(state) autoSellOn = state end)
-
-local autoChestFarmOn = false
-addToggle(autoPage, "📦 AUTO CHEST & CRATE OPENER", function(state) autoChestFarmOn = state end)
+addLevelGatedToggle(mainPage, "⚡ INSTANT APOCALYPSE FARM", 250, function(state) instantApocalypseOn = state end)
 
 local pickupOn = false
-addToggle(autoPage, "📦 HYPER AUTO PICK-UP", function(state) pickupOn = state end)
+addLevelGatedToggle(autoPage, "📦 HYPER AUTO PICK-UP", 50, function(state) pickupOn = state end)
 
 local giftRainOn = false
-addToggle(dropsPage, "🎁 FORCE GIFTRAIN SPAM", function(state) giftRainOn = state end)
+addLevelGatedToggle(dropsPage, "🎁 FORCE GIFTRAIN SPAM", 75, function(state) giftRainOn = state end)
 
 local lootItemOn = false
-addToggle(dropsPage, "⚡ FORCE LOOTITEM SPAM", function(state) lootItemOn = state end)
+addLevelGatedToggle(dropsPage, "⚡ FORCE LOOTITEM SPAM", 75, function(state) lootItemOn = state end)
 
 local chestSpamOn = false
-addToggle(dropsPage, "📦 FORCE CHEST OPEN SPAM", function(state) chestSpamOn = state end)
+addLevelGatedToggle(dropsPage, "📦 FORCE CHEST OPEN SPAM", 75, function(state) chestSpamOn = state end)
 
 local coinBoostOn = false
-addToggle(dropsPage, "🪙 FORCE COIN BOOST SPAM", function(state) coinBoostOn = state end)
+addLevelGatedToggle(dropsPage, "🪙 FORCE COIN BOOST SPAM", 75, function(state) coinBoostOn = state end)
 
-local infiniteSpamRemotesOn = false
-addToggle(dropsPage, "💣 GLOBAL REMOTE EVENT STRESS TEST SPAM", function(state) infiniteSpamRemotesOn = state end)
-
-addButton(dropsPage, "🍀 TRIGGER 1000% LUCK MULTIPLIER", function()
+addLevelGatedButton(dropsPage, "🍀 TRIGGER 1000% LUCK MULTIPLIER", 200, function()
     pcall(function()
-        for i = 1, 30 do
-            for _, name in ipairs({"GiftRain", "LootItem", "OpenChest", "ClaimReward", "SpawnCoins", "SuperLuck", "Boost"}) do
+        for i = 1, 15 do
+            for _, name in ipairs({"GiftRain", "LootItem", "OpenChest", "ClaimReward", "SpawnCoins"}) do
                 local remote = rep:FindFirstChild(name, true) or ws:FindFirstChild(name, true)
                 if remote and remote:IsA("RemoteEvent") then remote:FireServer() end
             end
         end
+        if isRakoofHPZero() then addXp(1000) end
     end)
 end)
 
-addButton(dropsPage, "⭐ CLAIM ALL ACTIVE DROPS INSTANTLY", function()
+addLevelGatedButton(dropsPage, "⭐ CLAIM ALL ACTIVE DROPS INSTANTLY", 50, function()
     pcall(function()
-        for _, name in ipairs({"GiftRain", "LootItem", "CollectDrop", "ClaimDaily", "Reward", "Claim"}) do
+        for _, name in ipairs({"GiftRain", "LootItem", "CollectDrop", "ClaimDaily"}) do
             local remote = rep:FindFirstChild(name, true) or ws:FindFirstChild(name, true)
             if remote and remote:IsA("RemoteEvent") then remote:FireServer() end
         end
+        if isRakoofHPZero() then addXp(200) end
     end)
-end)
-
-local flyOn = false
-addToggle(playerPage, "🛸 GODMODE FLIGHT V3", function(state) flyOn = state end)
-
-local noclipOn = false
-addToggle(playerPage, "👻 ULTIMATE NOCLIP", function(state) noclipOn = state end)
-
-local infJumpOn = false
-addToggle(playerPage, "🦘 INFINITE JUMP FLIGHT", function(state) infJumpOn = state end)
-
-local speedOn = false
-addToggle(playerPage, "⚡ SPEED (250+)", function(state) speedOn = state end)
-
-local bfgAuraOn = false
-addToggle(combatPage, "⚔️ KILL-AURA 360 DEGREES", function(state) bfgAuraOn = state end)
-
-local hitBoxExpanderOn = false
-addToggle(combatPage, "🎯 ENEMY HITBOX EXPANDER (15x Size)", function(state) hitBoxExpanderOn = state end)
-
-local instantRespawnOn = false
-addToggle(combatPage, "⚡ INSTANT RESPAWN NO COOLDOWN", function(state) instantRespawnOn = state end)
-
-addButton(teleportsPage, "🌌 TELEPORT TO SHOP / VENDOR", function()
-    pcall(function()
-        local shop = ws:FindFirstChild("Shop", true) or ws:FindFirstChild("Store", true) or ws:FindFirstChild("Merchant", true)
-        if shop and shop:IsA("BasePart") then
-            lp.Character.HumanoidRootPart.CFrame = shop.CFrame + Vector3.new(0, 5, 0)
-        elseif shop and shop:IsA("Model") and shop.PrimaryPart then
-            lp.Character.HumanoidRootPart.CFrame = shop.PrimaryPart.CFrame + Vector3.new(0, 5, 0)
-        end
-    end)
-end)
-
-addButton(teleportsPage, "💎 TELEPORT TO HIGHEST ORE LAYER", function()
-    pcall(function()
-        local blocks = ws:FindFirstChild("Blocks")
-        if blocks then
-            for _, child in ipairs(blocks:GetChildren()) do
-                local targetPart = child:IsA("BasePart") and child or child:FindFirstChildWhichIsA("BasePart", true)
-                if targetPart then
-                    lp.Character.HumanoidRootPart.CFrame = targetPart.CFrame + Vector3.new(0, 10, 0)
-                    break
-                end
-            end
-        end
-    end)
-end)
-
-addButton(teleportsPage, "👑 TELEPORT TO SAFE ZONE / SPAWN", function()
-    pcall(function()
-        local spawn = ws:FindFirstChild("SpawnLocation", true) or ws:FindFirstChild("Spawn", true)
-        if spawn and spawn:IsA("BasePart") then
-            lp.Character.HumanoidRootPart.CFrame = spawn.CFrame + Vector3.new(0, 5, 0)
-        end
-    end)
-end)
-
-local espOn = false
-addToggle(visualPage, "👁️ PLAYER & ENTITY ESP BOXES", function(state) 
-    espOn = state 
-end)
-
-local fullbrightOn = false
-addToggle(visualPage, "☀️ FULLBRIGHT WORLD LIGHTING", function(state)
-    fullbrightOn = state
-    if fullbrightOn then
-        game:GetService("Lighting").Brightness = 2
-        game:GetService("Lighting").ClockTime = 14
-        game:GetService("Lighting").GlobalShadows = false
-    else
-        game:GetService("Lighting").Brightness = 1
-        game:GetService("Lighting").GlobalShadows = true
-    end
 end)
 
 if isSpecialUser and adminPage then
@@ -613,128 +566,7 @@ tasks.NormalLoop = task.spawn(function()
                                 local part = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Head") or obj:FindFirstChildWhichIsA("BasePart")
                                 if hum and part and hum.Health > 0 and not plrs:GetPlayerFromCharacter(obj) then
                                     remote:FireServer(hum, part)
-                                end
-                            end
-                        end
-                    end
-                end
-            end)
-            task.wait(0.01)
-        else
-            task.wait(0.1)
-        end
-    end
-end)
-
-conns.UltraLoop = rs.Heartbeat:Connect(function()
-    if ultraFastOn then
-        pcall(function()
-            local char = lp.Character
-            local tool = char and char:FindFirstChildOfClass("Tool") or lp.Backpack:FindFirstChildOfClass("Tool")
-            if tool then
-                local remote = tool:FindFirstChild("InflictTarget", true) or rep:FindFirstChild("InflictTarget", true)
-                if remote then
-                    for _, obj in ipairs(ws:GetChildren()) do
-                        if obj:IsA("Model") and obj ~= char then
-                            local hum = obj:FindFirstChildOfClass("Humanoid")
-                            local part = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Head") or obj:FindFirstChildWhichIsA("BasePart")
-                            if hum and part and hum.Health > 0 and not plrs:GetPlayerFromCharacter(obj) then
-                                remote:FireServer(hum, part)
-                            end
-                        end
-                    end
-                end
-            end
-        end)
-    end
-end)
-
-conns.HyperGodLoop = rs.Heartbeat:Connect(function()
-    if hyperGodLoopOn then
-        pcall(function()
-            local char = lp.Character
-            local tool = char and char:FindFirstChildOfClass("Tool") or lp.Backpack:FindFirstChildOfClass("Tool")
-            if tool then
-                local remote = tool:FindFirstChild("InflictTarget", true) or rep:FindFirstChild("InflictTarget", true)
-                if remote then
-                    for _, obj in ipairs(ws:GetChildren()) do
-                        if obj:IsA("Model") and obj ~= char then
-                            local hum = obj:FindFirstChildOfClass("Humanoid")
-                            local part = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Head") or obj:FindFirstChildWhichIsA("BasePart")
-                            if hum and part and hum.Health > 0 and not plrs:GetPlayerFromCharacter(obj) then
-                                remote:FireServer(hum, part)
-                                remote:FireServer(hum, part)
-                                remote:FireServer(hum, part)
-                            end
-                        end
-                    end
-                end
-            end
-        end)
-    end
-end)
-
-conns.DoomDayLoop = rs.Heartbeat:Connect(function()
-    if doomDayLoopOn then
-        pcall(function()
-            local char = lp.Character
-            local tool = char and char:FindFirstChildOfClass("Tool") or lp.Backpack:FindFirstChildOfClass("Tool")
-            if tool then
-                local remote = tool:FindFirstChild("InflictTarget", true) or rep:FindFirstChild("InflictTarget", true)
-                if remote then
-                    for _, obj in ipairs(ws:GetChildren()) do
-                        if obj:IsA("Model") and obj ~= char then
-                            local hum = obj:FindFirstChildOfClass("Humanoid")
-                            local part = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Head") or obj:FindFirstChildWhichIsA("BasePart")
-                            if hum and part and hum.Health > 0 and not plrs:GetPlayerFromCharacter(obj) then
-                                remote:FireServer(hum, part)
-                                remote:FireServer(hum, part)
-                                remote:FireServer(hum, part)
-                                remote:FireServer(hum, part)
-                                remote:FireServer(hum, part)
-                            end
-                        end
-                    end
-                end
-            end
-        end)
-    end
-end)
-
-tasks.InstantApocalypse = task.spawn(function()
-    while true do
-        if instantApocalypseOn then
-            pcall(function()
-                for _, name in ipairs({"GiftRain", "LootItem", "OpenChest", "SpawnCoins", "CollectDrop", "ClaimReward", "Damage", "Attack", "Hit"}) do
-                    local remote = rep:FindFirstChild(name, true) or ws:FindFirstChild(name, true)
-                    if remote and remote:IsA("RemoteEvent") then 
-                        remote:FireServer()
-                        remote:FireServer()
-                        remote:FireServer()
-                    end
-                end
-            end)
-            task.wait(0.001)
-        else
-            task.wait(0.1)
-        end
-    end
-end)
-
-tasks.BlockAura = task.spawn(function()
-    while true do
-        if blockAuraOn then
-            pcall(function()
-                local char = lp.Character
-                local hrp = char and char:FindFirstChild("HumanoidRootPart")
-                local blocks = ws:FindFirstChild("Blocks")
-                if hrp and blocks then
-                    for _, folder in ipairs(blocks:GetChildren()) do
-                        for _, part in ipairs(folder:GetDescendants()) do
-                            if part:IsA("BasePart") and (part.Position - hrp.Position).Magnitude < 40 then
-                                if typeof(firetouchinterest) == "function" then
-                                    firetouchinterest(hrp, part, 0)
-                                    firetouchinterest(hrp, part, 1)
+                                    if isRakoofHPZero() then addXp(1) end
                                 end
                             end
                         end
@@ -748,112 +580,109 @@ tasks.BlockAura = task.spawn(function()
     end
 end)
 
-tasks.InfiniteOreMagnet = task.spawn(function()
-    while true do
-        if infiniteOreMagnetOn then
-            pcall(function()
-                local char = lp.Character
-                local hrp = char and char:FindFirstChild("HumanoidRootPart")
-                local blocks = ws:FindFirstChild("Blocks")
-                if hrp and blocks then
-                    for _, folder in ipairs(blocks:GetChildren()) do
-                        for _, part in ipairs(folder:GetDescendants()) do
-                            if part:IsA("BasePart") then
-                                part.CFrame = hrp.CFrame
+conns.UltraLoop = rs.Heartbeat:Connect(function()
+    local effectiveLevel = isSpecialUser and 250 or levelData.level
+    if ultraFastOn and effectiveLevel >= 10 then
+        pcall(function()
+            local char = lp.Character
+            local tool = char and char:FindFirstChildOfClass("Tool") or lp.Backpack:FindFirstChildOfClass("Tool")
+            if tool then
+                local remote = tool:FindFirstChild("InflictTarget", true) or rep:FindFirstChild("InflictTarget", true)
+                if remote then
+                    for _, obj in ipairs(ws:GetChildren()) do
+                        if obj:IsA("Model") and obj ~= char then
+                            local hum = obj:FindFirstChildOfClass("Humanoid")
+                            local part = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Head") or obj:FindFirstChildWhichIsA("BasePart")
+                            if hum and part and hum.Health > 0 and not plrs:GetPlayerFromCharacter(obj) then
+                                remote:FireServer(hum, part)
+                                if isRakoofHPZero() then addXp(1) end
                             end
                         end
                     end
                 end
-            end)
-            task.wait(0.1)
-        else
-            task.wait(0.5)
-        end
+            end
+        end)
     end
 end)
 
-tasks.AutoRebirth = task.spawn(function()
-    while true do
-        if autoRebirthOn then
-            pcall(function()
-                for _, name in ipairs({"Rebirth", "Ascension", "Prestige", "Evolution"}) do
-                    local remote = rep:FindFirstChild(name, true) or ws:FindFirstChild(name, true)
-                    if remote and remote:IsA("RemoteEvent") then remote:FireServer() end
+conns.HyperGodLoop = rs.Heartbeat:Connect(function()
+    local effectiveLevel = isSpecialUser and 250 or levelData.level
+    if hyperGodLoopOn and effectiveLevel >= 150 then
+        pcall(function()
+            local char = lp.Character
+            local tool = char and char:FindFirstChildOfClass("Tool") or lp.Backpack:FindFirstChildOfClass("Tool")
+            if tool then
+                local remote = tool:FindFirstChild("InflictTarget", true) or rep:FindFirstChild("InflictTarget", true)
+                if remote then
+                    for _, obj in ipairs(ws:GetChildren()) do
+                        if obj:IsA("Model") and obj ~= char then
+                            local hum = obj:FindFirstChildOfClass("Humanoid")
+                            local part = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Head") or obj:FindFirstChildWhichIsA("BasePart")
+                            if hum and part and hum.Health > 0 and not plrs:GetPlayerFromCharacter(obj) then
+                                remote:FireServer(hum, part)
+                                remote:FireServer(hum, part)
+                                if isRakoofHPZero() then addXp(2) end
+                            end
+                        end
+                    end
                 end
-            end)
-            task.wait(1)
-        else
-            task.wait(0.5)
-        end
+            end
+        end)
     end
 end)
 
-tasks.AutoUpgrade = task.spawn(function()
-    while true do
-        if autoUpgradeOn then
-            pcall(function()
-                for _, name in ipairs({"Upgrade", "BuyUpgrade", "StatUpgrade", "LevelUp"}) do
-                    local remote = rep:FindFirstChild(name, true) or ws:FindFirstChild(name, true)
-                    if remote and remote:IsA("RemoteEvent") then remote:FireServer(1) end
+conns.DoomDayLoop = rs.Heartbeat:Connect(function()
+    local effectiveLevel = isSpecialUser and 250 or levelData.level
+    if doomDayLoopOn and effectiveLevel >= 250 then
+        pcall(function()
+            local char = lp.Character
+            local tool = char and char:FindFirstChildOfClass("Tool") or lp.Backpack:FindFirstChildOfClass("Tool")
+            if tool then
+                local remote = tool:FindFirstChild("InflictTarget", true) or rep:FindFirstChild("InflictTarget", true)
+                if remote then
+                    for _, obj in ipairs(ws:GetChildren()) do
+                        if obj:IsA("Model") and obj ~= char then
+                            local hum = obj:FindFirstChildOfClass("Humanoid")
+                            local part = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Head") or obj:FindFirstChildWhichIsA("BasePart")
+                            if hum and part and hum.Health > 0 and not plrs:GetPlayerFromCharacter(obj) then
+                                remote:FireServer(hum, part)
+                                remote:FireServer(hum, part)
+                                remote:FireServer(hum, part)
+                                remote:FireServer(hum, part)
+                                if isRakoofHPZero() then addXp(5) end
+                            end
+                        end
+                    end
                 end
+            end
+        end)
+    end
+end)
+
+tasks.InstantApocalypse = task.spawn(function()
+    while true do
+        local effectiveLevel = isSpecialUser and 250 or levelData.level
+        if instantApocalypseOn and effectiveLevel >= 250 then
+            pcall(function()
+                for _, name in ipairs({"GiftRain", "LootItem", "OpenChest", "SpawnCoins", "CollectDrop", "ClaimReward"}) do
+                    local remote = rep:FindFirstChild(name, true) or ws:FindFirstChild(name, true)
+                    if remote and remote:IsA("RemoteEvent") then 
+                        remote:FireServer()
+                        remote:FireServer()
+                    end
+                end
+                if isRakoofHPZero() then addXp(10) end
             end)
+            task.wait(0.005)
+        else
             task.wait(0.2)
-        else
-            task.wait(0.5)
-        end
-    end
-end)
-
-tasks.AutoBuyPick = task.spawn(function()
-    while true do
-        if autoBuyPickOn then
-            pcall(function()
-                for _, name in ipairs({"BuyPickaxe", "BuyWeapon", "Purchase", "BuyGear"}) do
-                    local remote = rep:FindFirstChild(name, true) or ws:FindFirstChild(name, true)
-                    if remote and remote:IsA("RemoteEvent") then remote:FireServer() end
-                end
-            end)
-            task.wait(0.5)
-        else
-            task.wait(0.5)
-        end
-    end
-end)
-
-tasks.AutoSell = task.spawn(function()
-    while true do
-        if autoSellOn then
-            pcall(function()
-                for _, name in ipairs({"Sell", "SellOres", "SellInventory", "Deposit"}) do
-                    local remote = rep:FindFirstChild(name, true) or ws:FindFirstChild(name, true)
-                    if remote and remote:IsA("RemoteEvent") then remote:FireServer() end
-                end
-            end)
-            task.wait(0.5)
-        else
-            task.wait(0.5)
-        end
-    end
-end)
-
-tasks.AutoChest = task.spawn(function()
-    while true do
-        if autoChestFarmOn then
-            pcall(function()
-                for _, name in ipairs({"OpenChest", "ClaimChest", "Crate", "Reward"}) do
-                    local remote = rep:FindFirstChild(name, true) or ws:FindFirstChild(name, true)
-                    if remote and remote:IsA("RemoteEvent") then remote:FireServer() end
-                end
-            end)
-            task.wait(0.2)
-        else
-            task.wait(0.5)
         end
     end
 end)
 
 conns.HyperPickup = rs.Stepped:Connect(function()
-    if pickupOn then
+    local effectiveLevel = isSpecialUser and 250 or levelData.level
+    if pickupOn and effectiveLevel >= 50 then
         pcall(function()
             local char = lp.Character
             local hrp = char and char:FindFirstChild("HumanoidRootPart")
@@ -867,6 +696,7 @@ conns.HyperPickup = rs.Stepped:Connect(function()
                                 firetouchinterest(hrp, part, 0)
                                 firetouchinterest(hrp, part, 1)
                             end
+                            if isRakoofHPZero() then addXp(1) end
                         end
                     end
                 end
@@ -877,12 +707,14 @@ end)
 
 tasks.GiftRainLoop = task.spawn(function()
     while true do
-        if giftRainOn then
+        local effectiveLevel = isSpecialUser and 250 or levelData.level
+        if giftRainOn and effectiveLevel >= 75 then
             pcall(function()
                 local remote = rep:FindFirstChild("GiftRain", true) or ws:FindFirstChild("GiftRain", true)
                 if remote and remote:IsA("RemoteEvent") then remote:FireServer() end
+                if isRakoofHPZero() then addXp(2) end
             end)
-            task.wait(0.005)
+            task.wait(0.01)
         else
             task.wait(0.2)
         end
@@ -891,12 +723,14 @@ end)
 
 tasks.LootItemLoop = task.spawn(function()
     while true do
-        if lootItemOn then
+        local effectiveLevel = isSpecialUser and 250 or levelData.level
+        if lootItemOn and effectiveLevel >= 75 then
             pcall(function()
                 local remote = rep:FindFirstChild("LootItem", true) or ws:FindFirstChild("LootItem", true)
                 if remote and remote:IsA("RemoteEvent") then remote:FireServer() end
+                if isRakoofHPZero() then addXp(2) end
             end)
-            task.wait(0.005)
+            task.wait(0.01)
         else
             task.wait(0.2)
         end
@@ -905,12 +739,14 @@ end)
 
 tasks.ChestLoop = task.spawn(function()
     while true do
-        if chestSpamOn then
+        local effectiveLevel = isSpecialUser and 250 or levelData.level
+        if chestSpamOn and effectiveLevel >= 75 then
             pcall(function()
                 local remote = rep:FindFirstChild("OpenChest", true) or rep:FindFirstChild("Chest", true)
                 if remote and remote:IsA("RemoteEvent") then remote:FireServer() end
+                if isRakoofHPZero() then addXp(2) end
             end)
-            task.wait(0.005)
+            task.wait(0.01)
         else
             task.wait(0.2)
         end
@@ -919,77 +755,22 @@ end)
 
 tasks.CoinLoop = task.spawn(function()
     while true do
-        if coinBoostOn then
+        local effectiveLevel = isSpecialUser and 250 or levelData.level
+        if coinBoostOn and effectiveLevel >= 75 then
             pcall(function()
                 local remote = rep:FindFirstChild("SpawnCoins", true) or rep:FindFirstChild("CoinBoost", true)
                 if remote and remote:IsA("RemoteEvent") then remote:FireServer() end
+                if isRakoofHPZero() then addXp(2) end
             end)
-            task.wait(0.005)
+            task.wait(0.01)
         else
             task.wait(0.2)
         end
     end
 end)
 
-tasks.StressTestLoop = task.spawn(function()
-    while true do
-        if infiniteSpamRemotesOn then
-            pcall(function()
-                for _, obj in ipairs(rep:GetDescendants()) do
-                    if obj:IsA("RemoteEvent") then
-                        obj:FireServer()
-                    end
-                end
-            end)
-            task.wait(0.01)
-        else
-            task.wait(0.5)
-        end
-    end
-end)
-
-conns.Flight = rs.RenderStepped:Connect(function()
-    if flyOn then
-        pcall(function()
-            local char = lp.Character
-            local hrp = char and char:FindFirstChild("HumanoidRootPart")
-            local cam = ws.CurrentCamera
-            if hrp and cam then
-                hrp.Velocity = Vector3.new(0, 0, 0)
-                local moveDir = Vector3.new(0, 0, 0)
-                if uis:IsKeyDown(Enum.KeyCode.W) then moveDir = moveDir + cam.CFrame.LookVector end
-                if uis:IsKeyDown(Enum.KeyCode.S) then moveDir = moveDir - cam.CFrame.LookVector end
-                if uis:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir - cam.CFrame.RightVector end
-                if uis:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + cam.CFrame.RightVector end
-                if uis:IsKeyDown(Enum.KeyCode.Space) then moveDir = moveDir + Vector3.new(0, 1, 0) end
-                if uis:IsKeyDown(Enum.KeyCode.LeftShift) then moveDir = moveDir - Vector3.new(0, 1, 0) end
-                hrp.CFrame = hrp.CFrame + (moveDir * 3)
-            end
-        end)
-    end
-end)
-
-conns.Noclip = rs.Stepped:Connect(function()
-    if noclipOn then
-        pcall(function()
-            local char = lp.Character
-            if char then
-                for _, part in ipairs(char:GetDescendants()) do
-                    if part:IsA("BasePart") then part.CanCollide = false end
-                end
-            end
-        end)
-    end
-end)
-
-uis.InputBegan:Connect(function(input, gpe)
-    if not gpe and infJumpOn and input.KeyCode == Enum.KeyCode.Space then
-        pcall(function()
-            local hum = lp.Character and lp.Character:FindFirstChildOfClass("Humanoid")
-            if hum then hum:ChangeState(Enum.HumanoidStateType.Jumping) end
-        end)
-    end
-end)
+local speedOn = false
+addLevelGatedToggle(playerPage, "⚡ SPEED (64+)", 1, function(state) speedOn = state end)
 
 conns.Speed = rs.Stepped:Connect(function()
     pcall(function()
@@ -1006,65 +787,6 @@ conns.Speed = rs.Stepped:Connect(function()
         
         local currentLvl = isSpecialUser and 250 or levelData.level
         local hum = lp.Character and lp.Character:FindFirstChildOfClass("Humanoid")
-        if hum then hum.WalkSpeed = speedOn and (250 + (currentLvl * 2)) or 16 end
+        if hum then hum.WalkSpeed = speedOn and (64 + (currentLvl * 1.5)) or 16 end
     end)
-end)
-
-conns.KillAura = rs.Heartbeat:Connect(function()
-    if bfgAuraOn then
-        pcall(function()
-            local char = lp.Character
-            local hrp = char and char:FindFirstChild("HumanoidRootPart")
-            local tool = char and char:FindFirstChildOfClass("Tool") or lp.Backpack:FindFirstChildOfClass("Tool")
-            if hrp and tool then
-                local remote = tool:FindFirstChild("InflictTarget", true) or rep:FindFirstChild("InflictTarget", true) or tool:FindFirstChild("Attack", true)
-                if remote then
-                    for _, obj in ipairs(ws:GetChildren()) do
-                        if obj:IsA("Model") and obj ~= char then
-                            local hum = obj:FindFirstChildOfClass("Humanoid")
-                            local part = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Head") or obj:FindFirstChildWhichIsA("BasePart")
-                            if hum and part and hum.Health > 0 and (part.Position - hrp.Position).Magnitude <= 100 then
-                                remote:FireServer(hum, part)
-                            end
-                        end
-                    end
-                end
-            end
-        end)
-    end
-end)
-
-conns.Hitbox = rs.Heartbeat:Connect(function()
-    if hitBoxExpanderOn then
-        pcall(function()
-            for _, p in ipairs(plrs:GetPlayers()) do
-                if p ~= lp and p.Character then
-                    local hrp = p.Character:FindFirstChild("HumanoidRootPart")
-                    if hrp then
-                        hrp.Size = Vector3.new(15, 15, 15)
-                        hrp.Transparency = 0.7
-                        hrp.CanCollide = false
-                    end
-                end
-            end
-        end)
-    end
-end)
-
-tasks.InstantRespawn = task.spawn(function()
-    while true do
-        if instantRespawnOn then
-            pcall(function()
-                local char = lp.Character
-                local hum = char and char:FindFirstChildOfClass("Humanoid")
-                if hum and hum.Health <= 0 then
-                    local remote = rep:FindFirstChild("Respawn", true) or rep:FindFirstChild("Spawn", true)
-                    if remote and remote:IsA("RemoteEvent") then remote:FireServer() end
-                end
-            end)
-            task.wait(0.1)
-        else
-            task.wait(0.5)
-        end
-    end
 end)
